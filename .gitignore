@@ -1,0 +1,19 @@
+node_modules/
+dist/
+build/
+.env
+.env.*
+!.env.example
+coverage/
+.expo/
+.vscode/
+*.log
+*.tmp
+qa_*/
+
+# Archivos locales y de sistema
+Thumbs.db
+Desktop.ini
+
+# Datos persistentes locales de Docker
+mysql-data/
