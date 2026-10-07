@@ -1,0 +1,234 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum EstadoUsuario {
+  Activo
+  Inactivo
+}
+
+enum TipoVehiculo {
+  Auto
+  Moto
+  Camioneta
+}
+
+enum EstadoEmpleado {
+  Activo
+  Inactivo
+}
+
+enum EstadoCochera {
+  Disponible
+  Ocupado
+  FueraDeServicio
+}
+
+enum EstadoReserva {
+  Pendiente
+  Confirmada
+  Cancelada
+  Utilizada
+  Vencida
+}
+
+enum EstadoEstadia {
+  Activa
+  Finalizada
+}
+
+enum MetodoPago {
+  Efectivo
+  Debito
+  Credito
+  Transferencia
+  MercadoPago
+}
+
+enum EstadoPago {
+  Pendiente
+  Aprobado
+  Rechazado
+  Cancelado
+}
+
+model Usuario {
+  id             Int            @id @default(autoincrement()) @map("id_usuario")
+  nombre         String         @db.VarChar(50)
+  apellido       String         @db.VarChar(50)
+  dni            String         @unique @db.VarChar(10)
+  email          String         @unique @db.VarChar(100)
+  contrasena     String         @map("contrasena") @db.VarChar(100)
+  telefono       String         @db.VarChar(20)
+  fechaRegistro  DateTime       @default(now()) @map("fecha_registro")
+  ciudad         String         @db.VarChar(40)
+  estado         EstadoUsuario  @default(Activo)
+  vehiculos      Vehiculo[]
+  reservas       Reserva[]
+  estadias       Estadia[]
+  notificaciones Notificacion[]
+
+  @@map("Usuario")
+}
+
+model Vehiculo {
+  id        Int          @id @default(autoincrement()) @map("id_vehiculo")
+  patente   String       @unique @db.VarChar(15)
+  modelo    String       @db.VarChar(20)
+  tipo      TipoVehiculo
+  idUsuario Int          @map("id_usuario")
+  usuario   Usuario      @relation(fields: [idUsuario], references: [id])
+  reservas  Reserva[]
+  estadias  Estadia[]
+
+  @@map("Vehiculo")
+}
+
+model Dueno {
+  id         Int                    @id @default(autoincrement()) @map("id_dueno")
+  nombre     String                 @db.VarChar(30)
+  apellido   String                 @db.VarChar(50)
+  dni        String                 @unique @db.VarChar(10)
+  email      String                 @unique @db.VarChar(100)
+  contrasena String                 @map("contrasena") @db.VarChar(100)
+  telefono   String                 @db.VarChar(20)
+  playas     PlayaEstacionamiento[]
+
+  @@map("Dueno")
+}
+
+model PlayaEstacionamiento {
+  id              Int        @id @default(autoincrement()) @map("id_playa")
+  nombre          String     @db.VarChar(30)
+  direccion       String     @db.VarChar(60)
+  telefono        String     @db.VarChar(20)
+  horaApertura    DateTime   @map("hora_apertura") @db.Time(0)
+  horaCierre      DateTime   @map("hora_cierre") @db.Time(0)
+  capacidad       Int
+  permiteReservas Boolean    @default(false) @map("permite_reservas")
+  idDueno         Int        @map("id_dueno")
+  dueno           Dueno      @relation(fields: [idDueno], references: [id])
+  empleados       Empleado[]
+  cocheras        Cochera[]
+  tarifas         Tarifa[]
+
+  @@map("PlayaEstacionamiento")
+}
+
+model Empleado {
+  id         Int                  @id @default(autoincrement()) @map("id_empleado")
+  nombre     String               @db.VarChar(30)
+  apellido   String               @db.VarChar(50)
+  dni        String               @unique @db.VarChar(10)
+  email      String               @unique @db.VarChar(100)
+  contrasena String               @map("contrasena") @db.VarChar(100)
+  telefono   String               @db.VarChar(20)
+  cargo      String               @db.VarChar(25)
+  estado     EstadoEmpleado       @default(Activo)
+  idPlaya    Int                  @map("id_playa")
+  playa      PlayaEstacionamiento @relation(fields: [idPlaya], references: [id])
+  estadias   Estadia[]
+
+  @@map("Empleado")
+}
+
+model Cochera {
+  id           Int                  @id @default(autoincrement()) @map("id_cochera")
+  numero       String               @db.VarChar(10)
+  tipoVehiculo TipoVehiculo         @map("tipo_vehiculo")
+  estado       EstadoCochera        @default(Disponible)
+  ubicacion    String               @db.VarChar(30)
+  idPlaya      Int                  @map("id_playa")
+  idTarifa     Int                  @map("id_tarifa")
+  playa        PlayaEstacionamiento @relation(fields: [idPlaya], references: [id])
+  tarifa       Tarifa               @relation(fields: [idTarifa], references: [id])
+  reservas     Reserva[]
+  estadias     Estadia[]
+
+  @@unique([idPlaya, numero])
+  @@map("Cochera")
+}
+
+model Tarifa {
+  id          Int                  @id @default(autoincrement()) @map("id_tarifa")
+  descripcion String               @db.VarChar(30)
+  precioHora  Decimal              @map("precio_hora") @db.Decimal(10, 2)
+  idPlaya     Int                  @map("id_playa")
+  playa       PlayaEstacionamiento @relation(fields: [idPlaya], references: [id])
+  cocheras    Cochera[]
+
+  @@map("Tarifa")
+}
+
+model Reserva {
+  id             Int           @id @default(autoincrement()) @map("id_reserva")
+  fechaReserva   DateTime      @default(now()) @map("fecha_reserva")
+  ingreso        DateTime
+  salidaEstimada DateTime      @map("salida_estimada")
+  montoSena      Decimal       @map("monto_sena") @db.Decimal(10, 2)
+  estado         EstadoReserva @default(Pendiente)
+  idUsuario      Int           @map("id_usuario")
+  idVehiculo     Int           @map("id_vehiculo")
+  idCochera      Int           @map("id_cochera")
+  usuario        Usuario       @relation(fields: [idUsuario], references: [id])
+  vehiculo       Vehiculo      @relation(fields: [idVehiculo], references: [id])
+  cochera        Cochera       @relation(fields: [idCochera], references: [id])
+  pagos          Pago[]
+
+  @@index([idCochera, ingreso, salidaEstimada])
+  @@map("Reserva")
+}
+
+model Estadia {
+  id           Int           @id @default(autoincrement()) @map("id_estadia")
+  fechaIngreso DateTime      @map("fecha_ingreso")
+  fechaSalida  DateTime?     @map("fecha_salida")
+  montoTotal   Decimal?      @map("monto_total") @db.Decimal(10, 2)
+  estado       EstadoEstadia @default(Activa)
+  idUsuario    Int           @map("id_usuario")
+  idVehiculo   Int           @map("id_vehiculo")
+  idCochera    Int           @map("id_cochera")
+  idEmpleado   Int?          @map("id_empleado")
+  usuario      Usuario       @relation(fields: [idUsuario], references: [id])
+  vehiculo     Vehiculo      @relation(fields: [idVehiculo], references: [id])
+  cochera      Cochera       @relation(fields: [idCochera], references: [id])
+  empleado     Empleado?     @relation(fields: [idEmpleado], references: [id])
+  pagos        Pago[]
+
+  @@index([idVehiculo, estado])
+  @@map("Estadia")
+}
+
+model Pago {
+  id        Int        @id @default(autoincrement()) @map("id_pago")
+  fechaPago DateTime   @map("fecha_pago")
+  monto     Decimal    @db.Decimal(10, 2)
+  metodo    MetodoPago
+  estado    EstadoPago @default(Pendiente)
+  idReserva Int?       @map("id_reserva")
+  idEstadia Int?       @map("id_estadia")
+  reserva   Reserva?   @relation(fields: [idReserva], references: [id])
+  estadia   Estadia?   @relation(fields: [idEstadia], references: [id])
+
+  @@index([idReserva])
+  @@index([idEstadia])
+  @@map("Pago")
+}
+
+model Notificacion {
+  id         Int      @id @default(autoincrement()) @map("id_notificacion")
+  titulo     String   @db.VarChar(100)
+  mensaje    String   @db.Text
+  tipo       String   @db.VarChar(40)
+  fechaEnvio DateTime @map("fecha_envio")
+  leida      Boolean  @default(false)
+  idUsuario  Int      @map("id_usuario")
+  usuario    Usuario  @relation(fields: [idUsuario], references: [id])
+
+  @@map("Notificacion")
+}
